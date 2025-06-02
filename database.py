@@ -1,8 +1,15 @@
+import os # Added import
 from sqlalchemy import Column, Integer, String, DateTime, JSON, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-DATABASE_URL = "sqlite:///./mariner_data.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+DEFAULT_SQLITE_URL = "sqlite:///./mariner_data.db"
+DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_SQLITE_URL)
+
+engine_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_args["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 Base = declarative_base()
 

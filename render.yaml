@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: vehicle-tracker-api
+    env: python
+    plan: free # Or your desired plan
+    buildCommand: |-
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      playwright install --with-deps chromium
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11 # Or your desired Python version
+      # Add other environment variables if needed, e.g., for database URLs if switching from SQLite
+      # Example for Render PostgreSQL:
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: marinerdb # Name of your Render database service
+      #     property: connectionString
+
+  - type: worker
+    name: vehicle-scraper-worker
+    env: python
+    plan: free # Or your desired plan
+    buildCommand: |-
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      playwright install --with-deps chromium
+    startCommand: python scraper.py # This will run the scraper once on start/deploy
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: API_URL
+        # For services in the same Render app, you can use service discovery:
+        # value: "http://vehicle-tracker-api:10000/api/v1/listings/ingest"
+        # Replace `vehicle-tracker-api` with the actual name of your web service.
+        # Port 10000 is typically used for internal Render service communication.
+        # For initial setup or if deploying separately, use the public URL:
+        value: "https://your-api-service-name.onrender.com/api/v1/listings/ingest" # USER NEEDS TO REPLACE THIS
+      # To run as a cron job, you would change the type to 'cron' and add a schedule:
+      # type: cron
+      # name: vehicle-scraper-cron
+      # schedule: "0 0 * * *" # Example: Run daily at midnight UTC
+      # command: python scraper.py
+    autoDeploy: false # Typically, you might not want to auto-deploy workers on every commit.
+
+# Optional: Define databases if moving away from SQLite and using Render's managed PostgreSQL
+# databases:
+#   - name: marinerdb # Name for your database instance on Render
+#     plan: free # or your desired plan
+#     # databaseName: mariner_data # Optional: specific database name within the instance
+#     # user: mariner_user # Optional: specific user for the database
+#     # region: oregon # Optional: pick a region, default is your service's region
+```
