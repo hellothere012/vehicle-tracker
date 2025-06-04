@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database Configuration
-DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/vehicle_tracker.db")
+DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/vehicle_tracker.db")
 
 # Scraper Configuration
 AUTOTRADER_URL: str = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/private-seller")
 SCRAPE_TIMEOUT: int = int(os.getenv("SCRAPE_TIMEOUT", "120000"))  # Milliseconds
-HEADLESS_BROWSER: bool = os.getenv("HEADLESS_BROWSER", "True").lower() == "true"
+HEADLESS: bool = os.getenv("HEADLESS", "true").lower() == "true"
 
 # API Configuration (if any specific ones are needed later)
 # Example: API_HOST: str = os.getenv("API_HOST", "0.0.0.0")

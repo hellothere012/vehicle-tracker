@@ -15,5 +15,5 @@ services:
         value: "https://www.autotrader.com/cars-for-sale/private-seller"
       - key: SCRAPE_TIMEOUT
         value: 120000
-      - key: HEADLESS_BROWSER
+      - key: HEADLESS
         value: "True"

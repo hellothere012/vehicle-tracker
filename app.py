@@ -8,7 +8,7 @@ from datetime import datetime
 from database import CarListing, get_db, Session, SessionLocal
 from scraper import scrape_autotrader_and_update_db
 from fastapi.middleware.cors import CORSMiddleware
-from config import AUTOTRADER_URL, HEADLESS_BROWSER, SCRAPE_TIMEOUT, LOG_LEVEL # Import from config
+from config import AUTOTRADER_URL, HEADLESS, SCRAPE_TIMEOUT, LOG_LEVEL # Import from config
 
 # Configure basic logging using LOG_LEVEL from config
 # Ensure this is called only once. If FastAPI/Uvicorn also configures logging,
@@ -73,7 +73,7 @@ async def _background_scraper_task_wrapper():
     try:
         # Use imported config values
         # autotrader_url = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/private-seller")
-        # headless_str = os.getenv("HEADLESS_BROWSER", "True")
+        # headless_str = os.getenv("HEADLESS", "True")
         # headless = headless_str.lower() == "true"
         # scrape_timeout_str = os.getenv("SCRAPE_TIMEOUT", "120000")
         # try:
@@ -82,12 +82,12 @@ async def _background_scraper_task_wrapper():
         #     logging.warning(f"Invalid SCRAPE_TIMEOUT value: {scrape_timeout_str}. Defaulting to 120000ms.")
         #     scrape_timeout = 120000
 
-        logging.info(f"Background task using URL: {AUTOTRADER_URL}, Headless: {HEADLESS_BROWSER}, Timeout: {SCRAPE_TIMEOUT}ms")
+        logging.info(f"Background task using URL: {AUTOTRADER_URL}, Headless: {HEADLESS}, Timeout: {SCRAPE_TIMEOUT}ms")
 
         result = await scrape_autotrader_and_update_db(
             db=db_task_session,
             autotrader_url=AUTOTRADER_URL,
-            headless=HEADLESS_BROWSER,
+            headless=HEADLESS,
             scrape_timeout=SCRAPE_TIMEOUT
         )
 

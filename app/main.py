@@ -129,7 +129,7 @@ async def trigger_scrape(background_tasks: BackgroundTasks, db: AsyncSession = D
         raise HTTPException(status_code=409, detail="A scraping job is already in progress.")
 
     autotrader_url = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/all-cars/cars-under-10000") # Default to a common search if not set
-    headless_str = os.getenv("HEADLESS_BROWSER", "True")
+    headless_str = os.getenv("HEADLESS", "True")
     headless = headless_str.lower() == "true"
     scrape_timeout_str = os.getenv("SCRAPE_TIMEOUT", "120000")
 
