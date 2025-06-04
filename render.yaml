@@ -11,9 +11,19 @@ services:
         value: 3.11
       - key: DATABASE_URL
         generateValue: true
-      - key: AUTOTRADER_URL
-        value: "https://www.autotrader.com/cars-for-sale/private-seller"
-      - key: SCRAPE_TIMEOUT
-        value: 120000
-      - key: HEADLESS_BROWSER
+      - key: HEADLESS
         value: "True"
+      - key: BROWSER_TIMEOUT
+        value: "60000"
+      - key: PAGE_DELAY
+        value: "5000"
+      - key: MIN_DELAY_BETWEEN_ACTIONS
+        value: "2.5"
+      - key: MAX_LISTINGS_PER_SESSION
+        value: "25"
+      - key: PROXY_SERVER
+        value: ""
+      - key: PROXY_USERNAME
+        value: ""
+      - key: PROXY_PASSWORD
+        value: ""

@@ -25,8 +25,16 @@ class AutoTraderScraper:
         logger.info("Initializing AutoTrader Scraper...")
         self.playwright_instance = await async_playwright().start()
         try:
+            proxy_cfg = None
+            if settings.PROXY_SERVER:
+                proxy_cfg = {"server": settings.PROXY_SERVER}
+                if settings.PROXY_USERNAME and settings.PROXY_PASSWORD:
+                    proxy_cfg["username"] = settings.PROXY_USERNAME
+                    proxy_cfg["password"] = settings.PROXY_PASSWORD
+
             self.browser = await self.playwright_instance.chromium.launch(
                 headless=settings.HEADLESS,
+                proxy=proxy_cfg,
                 args=[
                     '--no-sandbox',
                     '--disable-setuid-sandbox',

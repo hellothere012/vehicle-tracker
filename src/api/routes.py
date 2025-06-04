@@ -121,8 +121,10 @@ async def api_v1_root_info():
 
 @router.get("/vehicles/", response_model=List[VehicleListingResponse])
 async def get_all_vehicles(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(settings.MAX_LISTINGS_PER_SESSION, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    filters: SearchFilters = Depends()
+    filters: SearchFilters = Depends(),
 ):
     query = select(VehicleListing)
     conditions = []
@@ -151,7 +153,7 @@ async def get_all_vehicles(
     if conditions:
         query = query.where(and_(*conditions))
     query = query.order_by(VehicleListing.last_scraped_at.desc(), VehicleListing.created_at.desc())
-    result = await db.execute(query)
+    result = await db.execute(query.offset(skip).limit(limit))
     vehicles = result.scalars().all()
     response_vehicles = []
     for vehicle_db_item in vehicles:

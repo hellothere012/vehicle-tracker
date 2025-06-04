@@ -13,4 +13,9 @@ class Settings:
     API_PORT: int = int(os.getenv("API_PORT", "8000"))
     MAX_LISTINGS_PER_SESSION: int = int(os.getenv("MAX_LISTINGS_PER_SESSION", "25"))
 
+    # Proxy configuration
+    PROXY_SERVER: str | None = os.getenv("PROXY_SERVER")
+    PROXY_USERNAME: str | None = os.getenv("PROXY_USERNAME")
+    PROXY_PASSWORD: str | None = os.getenv("PROXY_PASSWORD")
+
 settings = Settings()
