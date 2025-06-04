@@ -5,15 +5,25 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       playwright install chromium
-    startCommand: uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
+    startCommand: uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11  # Or your desired Python version
+        value: 3.11
       - key: DATABASE_URL
-        generateValue: true # For Render PostgreSQL, or set manually for SQLite/external DB
-      - key: AUTOTRADER_URL
-        value: "https://www.autotrader.com/cars-for-sale/private-seller" # Example
-      - key: SCRAPE_TIMEOUT
-        value: 120000 # Example: 120 seconds
-      - key: HEADLESS_BROWSER
+        generateValue: true
+      - key: HEADLESS
         value: "True"
+      - key: BROWSER_TIMEOUT
+        value: "60000"
+      - key: PAGE_DELAY
+        value: "5000"
+      - key: MIN_DELAY_BETWEEN_ACTIONS
+        value: "2.5"
+      - key: MAX_LISTINGS_PER_SESSION
+        value: "25"
+      - key: PROXY_SERVER
+        value: ""
+      - key: PROXY_USERNAME
+        value: ""
+      - key: PROXY_PASSWORD
+        value: ""
