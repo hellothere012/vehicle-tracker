@@ -60,6 +60,7 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.db-journal
 
 # Flask stuff:
 instance/
@@ -192,3 +193,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# Customizations
+/data/
+playwright-log.txt
