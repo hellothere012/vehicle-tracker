@@ -1,14 +1,12 @@
 import logging
 import os
+import asyncio
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from . import crud, models, schemas, scraper
-from .database import SessionLocal, engine
-
-# Create database tables if they don't exist
-models.Base.metadata.create_all(bind=engine)
+from .database import AsyncSessionLocal, engine, get_db, create_tables
 
 # Configure logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -17,13 +15,11 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AutoTrader Scraper API", version="1.0.0")
 
-# Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@app.on_event("startup")
+async def on_startup() -> None:
+    await create_tables()
+
+# get_db imported from .database
 
 # Global variable to store scraping status (simple approach)
 scrape_status = {
@@ -37,97 +33,94 @@ scrape_status = {
 }
 
 async def run_scraping_task(job_id: int, autotrader_url: str, headless: bool, scrape_timeout: int):
-    """
-    The actual scraping task that runs in the background.
-    It creates its own database session.
-    """
+    """Run scraping in the background using its own DB session."""
     global scrape_status
-    db: Session = SessionLocal()
-    try:
-        logger.info(f"Background task started for job_id: {job_id}")
-        crud.update_scrape_job_status(db, job_id, status="running")
-        scrape_status.update({
-            "job_id": job_id,
-            "status": "running",
-            "message": f"Scraping from {autotrader_url}...",
-            "last_run_time": datetime.utcnow().isoformat(),
-            "duration_seconds": None,
-            "results_count": 0,
-            "error_message": None
-        })
-
-        start_time = datetime.utcnow()
-
-        scraped_data_list = await scraper.scrape_autotrader_data(
-            autotrader_url=autotrader_url,
-            headless=headless,
-            timeout=scrape_timeout
-        )
-
-        end_time = datetime.utcnow()
-        duration = (end_time - start_time).total_seconds()
-        scrape_status["duration_seconds"] = round(duration, 2)
-
-        added_count = 0
-        updated_count = 0 # Placeholder for future update logic
-
-        if not scraped_data_list:
-            logger.info(f"No listings found for job_id: {job_id}")
-            crud.update_scrape_job_status(db, job_id, status="completed", results_count=0)
+    async with AsyncSessionLocal() as db:
+        try:
+            logger.info(f"Background task started for job_id: {job_id}")
+            await crud.update_scrape_job_status(db, job_id, status="running")
             scrape_status.update({
-                "status": "completed",
-                "message": "Scraping completed. No new listings found or page was inaccessible.",
-                "results_count": 0
+                "job_id": job_id,
+                "status": "running",
+                "message": f"Scraping from {autotrader_url}...",
+                "last_run_time": datetime.utcnow().isoformat(),
+                "duration_seconds": None,
+                "results_count": 0,
+                "error_message": None,
             })
-            return
 
-        for item_data in scraped_data_list:
-            # Ensure all required fields for CarListingCreate are present
-            listing_create = schemas.CarListingCreate(
-                job_id=job_id,
-                platform=item_data.get("source_name", "autotrader"), # Get platform from scraper or default
-                url=item_data.get("listing_url"),
-                title=item_data.get("title"),
-                price=item_data.get("price"),
-                mileage=item_data.get("mileage"),
-                vin=item_data.get("vin"),
-                image_urls=item_data.get("image_urls", []),
-                raw_data=item_data.get("data_points", {})
+            start_time = datetime.utcnow()
+
+            scraped_data_list = await scraper.scrape_autotrader_data(
+                autotrader_url=autotrader_url,
+                headless=headless,
+                timeout=scrape_timeout,
             )
 
-            existing_listing = crud.get_car_listing_by_url(db, str(listing_create.url))
-            if existing_listing:
-                # For now, we just count updates. Actual update logic could be added here.
-                # e.g., existing_listing.price = listing_create.price
-                # existing_listing.extracted_at = datetime.utcnow()
-                updated_count += 1
-            else:
-                crud.create_car_listing(db=db, listing=listing_create)
-                added_count += 1
+            end_time = datetime.utcnow()
+            duration = (end_time - start_time).total_seconds()
+            scrape_status["duration_seconds"] = round(duration, 2)
 
-        crud.update_scrape_job_status(db, job_id, status="completed", results_count=added_count)
-        scrape_status.update({
-            "status": "completed",
-            "message": f"Scraping finished. Added: {added_count}, Updated: {updated_count} (placeholder).",
-            "results_count": added_count + updated_count # Or just added_count if updates aren't really changing data
-        })
-        logger.info(f"Background task for job_id: {job_id} completed. Added: {added_count}, Updated: {updated_count}")
+            added_count = 0
+            updated_count = 0
 
-    except Exception as e:
-        logger.error(f"Error in background scraper task for job_id {job_id}: {e}", exc_info=True)
-        crud.update_scrape_job_status(db, job_id, status="failed", error_message=str(e))
-        scrape_status.update({
-            "status": "failed",
-            "message": f"Error during scraping: {str(e)}",
-            "error_message": str(e)
-        })
-    finally:
-        db.close()
-        logger.info(f"DB session closed for job_id: {job_id}")
+            if not scraped_data_list:
+                logger.info(f"No listings found for job_id: {job_id}")
+                await crud.update_scrape_job_status(db, job_id, status="completed", results_count=0)
+                scrape_status.update({
+                    "status": "completed",
+                    "message": "Scraping completed. No new listings found or page was inaccessible.",
+                    "results_count": 0,
+                })
+                return
+
+            for item_data in scraped_data_list:
+                listing_create = schemas.CarListingCreate(
+                    job_id=job_id,
+                    platform=item_data.get("source_name", "autotrader"),
+                    url=item_data.get("listing_url"),
+                    title=item_data.get("title"),
+                    price=item_data.get("price"),
+                    mileage=item_data.get("mileage"),
+                    vin=item_data.get("vin"),
+                    image_urls=item_data.get("image_urls", []),
+                    raw_data=item_data.get("data_points", {}),
+                )
+
+                existing_listing = await crud.get_car_listing_by_url(db, str(listing_create.url))
+                if existing_listing:
+                    updated_count += 1
+                else:
+                    await crud.create_car_listing(db=db, listing=listing_create)
+                    added_count += 1
+
+            await crud.update_scrape_job_status(db, job_id, status="completed", results_count=added_count)
+            scrape_status.update({
+                "status": "completed",
+                "message": f"Scraping finished. Added: {added_count}, Updated: {updated_count} (placeholder).",
+                "results_count": added_count + updated_count,
+            })
+            logger.info(
+                f"Background task for job_id: {job_id} completed. Added: {added_count}, Updated: {updated_count}"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Error in background scraper task for job_id {job_id}: {e}",
+                exc_info=True,
+            )
+            await crud.update_scrape_job_status(db, job_id, status="failed", error_message=str(e))
+            scrape_status.update({
+                "status": "failed",
+                "message": f"Error during scraping: {str(e)}",
+                "error_message": str(e),
+            })
+        finally:
+            logger.info(f"DB session closed for job_id: {job_id}")
 
 
 @app.post("/scrape/", response_model=schemas.ScrapeJob, status_code=202)
-async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def trigger_scrape(background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """
     Triggers a new scraping job for Autotrader.
     """
@@ -146,7 +139,7 @@ async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depend
         scrape_timeout = 120000 # Default timeout if parsing fails
         logger.warning(f"Invalid SCRAPE_TIMEOUT value: {scrape_timeout_str}. Using default {scrape_timeout}ms.")
 
-    job = crud.create_scrape_job(db)
+    job = await crud.create_scrape_job(db)
     scrape_status.update({
         "job_id": job.id,
         "status": "pending",
@@ -164,14 +157,14 @@ async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depend
     return job
 
 @app.post("/api/v1/listings/ingest", response_model=schemas.CarListing, status_code=201)
-async def ingest_listing(payload: schemas.CarListingCreate, db: Session = Depends(get_db)):
+async def ingest_listing(payload: schemas.CarListingCreate, db: AsyncSession = Depends(get_db)):
     """
     Ingests a new car listing into the database.
     This endpoint is useful for manually adding or testing data.
     """
     # Check if listing with this URL already exists to prevent duplicates,
     # though the database constraint should also handle this.
-    db_listing = crud.get_car_listing_by_url(db, url=str(payload.url))
+    db_listing = await crud.get_car_listing_by_url(db, url=str(payload.url))
     if db_listing:
         raise HTTPException(status_code=400, detail="Listing with this URL already exists.")
 
@@ -190,7 +183,7 @@ async def ingest_listing(payload: schemas.CarListingCreate, db: Session = Depend
         pass
 
     try:
-        created_listing = crud.create_car_listing(db=db, listing=payload)
+        created_listing = await crud.create_car_listing(db=db, listing=payload)
         return created_listing
     except Exception as e:
         logger.error(f"Error ingesting listing: {e}", exc_info=True)
@@ -198,13 +191,13 @@ async def ingest_listing(payload: schemas.CarListingCreate, db: Session = Depend
 
 
 @app.get("/scrape/status", response_model=schemas.ScrapeJob) # Using ScrapeJob schema for better structure
-async def get_current_scrape_status(db: Session = Depends(get_db)):
+async def get_current_scrape_status(db: AsyncSession = Depends(get_db)):
     """
     Returns the status of the current or last scraping job.
     """
     global scrape_status
     if scrape_status.get("job_id"):
-        job = crud.get_scrape_job(db, scrape_status["job_id"])
+        job = await crud.get_scrape_job(db, scrape_status["job_id"])
         if job:
             # Update status from DB if available, otherwise use in-memory for simplicity
             # A more robust system might always fetch from DB or use a proper job queue status
@@ -212,22 +205,22 @@ async def get_current_scrape_status(db: Session = Depends(get_db)):
     return scrape_status # Fallback to in-memory status if job not found or not started
 
 @app.get("/scrape/jobs/", response_model=List[schemas.ScrapeJob])
-async def read_jobs(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+async def read_jobs(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
     """
     Retrieve all scrape jobs.
     """
-    jobs = crud.get_all_scrape_jobs(db, skip=skip, limit=limit)
+    jobs = await crud.get_all_scrape_jobs(db, skip=skip, limit=limit)
     return jobs
 
 @app.get("/scrape/jobs/{job_id}/results", response_model=List[schemas.CarListing])
-async def read_job_results(job_id: int, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+async def read_job_results(job_id: int, skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
     """
     Retrieve results for a specific scrape job.
     """
-    job = crud.get_scrape_job(db, job_id=job_id)
+    job = await crud.get_scrape_job(db, job_id=job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    listings = crud.get_listings_for_job(db, job_id=job_id, skip=skip, limit=limit)
+    listings = await crud.get_listings_for_job(db, job_id=job_id, skip=skip, limit=limit)
     return listings
 
 @app.get("/")
@@ -240,7 +233,7 @@ if __name__ == "__main__":
     # Ensure tables are created before starting the app if they don't exist
     # This is useful for local development but might be handled differently in production
     from .database import create_tables
-    create_tables()
+    asyncio.run(create_tables())
 
     # Get port from environment variable or default to 8000
     port = int(os.getenv("PORT", "8000"))
