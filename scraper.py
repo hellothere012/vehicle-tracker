@@ -1,8 +1,11 @@
 import asyncio
 import logging
-import os
+# import os # No longer needed for getenv in main
 import datetime # Keep for now, might be used in data processing
 from playwright.async_api import async_playwright
+# Required for main test function
+from config import AUTOTRADER_URL, HEADLESS_BROWSER, SCRAPE_TIMEOUT
+# DATABASE_URL is used by database.py, SessionLocal will pick it up via config
 
 # Assuming database.py is in the same directory or accessible in PYTHONPATH
 from database import get_db, CarListing, SessionLocal # Added SessionLocal for main example
@@ -333,26 +336,26 @@ async def scrape_autotrader_and_update_db(db: Session, autotrader_url: str, head
     return status_summary
 
 async def main():
-    # Example: Fetch AUTOTRADER_URL from environment or use a default
-    url = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/private-seller")
-    headless_str = os.getenv("HEADLESS_BROWSER", "True")
-    headless = headless_str.lower() == "true"
-    scrape_timeout_str = os.getenv("SCRAPE_TIMEOUT", "120000")
-    try:
-        scrape_timeout = int(scrape_timeout_str)
-    except ValueError:
-        logging.warning(f"Invalid SCRAPE_TIMEOUT value: {scrape_timeout_str}. Defaulting to 120000ms.")
-        scrape_timeout = 120000
+    # Use settings from config.py
+    # url = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/private-seller")
+    # headless_str = os.getenv("HEADLESS_BROWSER", "True")
+    # headless = headless_str.lower() == "true"
+    # scrape_timeout_str = os.getenv("SCRAPE_TIMEOUT", "120000")
+    # try:
+    #     scrape_timeout = int(scrape_timeout_str)
+    # except ValueError:
+    #     logging.warning(f"Invalid SCRAPE_TIMEOUT value: {scrape_timeout_str}. Defaulting to 120000ms.")
+    #     scrape_timeout = 120000
 
     # from database import SessionLocal # Already imported at the top
-    db: Session = SessionLocal()
+    db: Session = SessionLocal() # SessionLocal now uses DATABASE_URL from config.py via database.py
     try:
-        logging.info(f"Starting scraper and DB update for URL: {url}, Headless: {headless}, Timeout: {scrape_timeout}ms")
+        logging.info(f"Starting scraper and DB update for URL: {AUTOTRADER_URL}, Headless: {HEADLESS_BROWSER}, Timeout: {SCRAPE_TIMEOUT}ms")
         stats = await scrape_autotrader_and_update_db(
             db=db,
-            autotrader_url=url,
-            headless=headless,
-            scrape_timeout=scrape_timeout # Pass the integer directly
+            autotrader_url=AUTOTRADER_URL,
+            headless=HEADLESS_BROWSER,
+            scrape_timeout=SCRAPE_TIMEOUT
         )
         logging.info(f"Scraping and DB update completed: {stats}")
     except Exception as e:
