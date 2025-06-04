@@ -536,10 +536,14 @@ def update_database(db, source=None, max_pages=1):
 
 
 if __name__ == "__main__":
-    # Example usage
-    from database import Database
-    
-    db = Database()
-    stats = update_database(db)
-    print(json.dumps(stats, indent=2))
-    db.close()
+    """Run a simple demonstration of the scrapers.
+
+    The previous example attempted to instantiate a ``Database`` class that
+    does not exist in this repository which caused ``ImportError`` when the
+    module was executed directly.  Instead we simply run the sample scraper
+    and print the returned data to verify that the scraping logic works.
+    """
+
+    scraper = AutoTraderScraper()
+    listings = scraper.get_private_listings(max_pages=1)
+    print(json.dumps(listings, indent=2, default=str))
