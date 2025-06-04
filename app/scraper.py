@@ -45,7 +45,7 @@ class AutoTraderScraper:
         """
         listings_data = []
         browser = None
-        
+
         launch_options = {
             "headless": headless,
             "args": [
@@ -60,7 +60,7 @@ class AutoTraderScraper:
             ],
             # "channel": "chrome" # This might require full Chrome install, trying without first to see if args help
         }
-        
+
         # Try with 'msedge' or 'chrome' if default chromium fails and they are available
         # For now, stick to chromium and args. If 'channel' is needed, it's a bigger setup change.
 
@@ -92,16 +92,16 @@ class AutoTraderScraper:
                 )
                 context.set_default_navigation_timeout(timeout)
                 context.set_default_timeout(timeout)
-                
+
                 page = await context.new_page()
                 await page.set_viewport_size({"width": 1920, "height": 1080})
 
                 # Apply custom JS stealth
                 await apply_stealth_js(page)
-                
+
                 logging.info(f"Navigating to {autotrader_url}")
                 await page.goto(autotrader_url, wait_until="domcontentloaded", timeout=timeout) # Reverted to domcontentloaded
-                
+
                 title = await page.title()
                 logging.info(f"Page title: {title}")
 
@@ -120,14 +120,14 @@ class AutoTraderScraper:
                 # A common pattern is items within a list or grid. Let's try to find items:
                 # This selector is a **GUESS** based on common AutoTrader structures.
                 listing_item_selector = "div[data-cmp='inventoryListing']" # GUESS
-                
+
                 # Fallback if the primary guess doesn't work, try another common pattern
                 # listing_item_selector_fallback = "div.inventory-listing.new-listing.stub" # Another GUESS
 
                 # await page.wait_for_selector(listing_item_selector, timeout=15000) # Wait for items to appear
-                
+
                 listing_containers = await page.query_selector_all(listing_item_selector)
-                
+
                 # if not listing_containers:
                 #     logging.info(f"No listings found with primary selector '{listing_item_selector}'. Trying fallback...")
                 #     listing_containers = await page.query_selector_all(listing_item_selector_fallback)
@@ -271,7 +271,7 @@ async def scrape_autotrader_and_update_db(db: Session, autotrader_url: str, head
         dict: A status dictionary with counts of added, updated, and scraped listings.
     """
     logging.info(f"Starting scrape and update for URL: {autotrader_url}")
-    
+
     try:
         listings_data = await scrape_autotrader_data(
             autotrader_url=autotrader_url,

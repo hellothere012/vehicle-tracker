@@ -1,7 +1,8 @@
+aiofiles
+asyncpg
 fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
 playwright
 playwright-stealth
 python-dotenv
+sqlalchemy[asyncio]
+uvicorn[standard]
