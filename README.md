@@ -20,3 +20,16 @@ The scraper can also be run standalone:
 ```bash
 python main.py scrape_test
 ```
+
+## Docker
+
+1. Build the image:
+   ```bash
+   ./build.sh
+   ```
+2. Run the container:
+   ```bash
+   docker run -p 8000:8000 vehicle-tracker
+   ```
+
+The API will be available at `http://localhost:8000`.

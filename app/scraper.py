@@ -4,7 +4,7 @@ import logging
 import datetime # Keep for now, might be used in data processing
 from playwright.async_api import async_playwright
 # Required for main test function
-from config import AUTOTRADER_URL, HEADLESS_BROWSER, SCRAPE_TIMEOUT
+from config import AUTOTRADER_URL, HEADLESS, SCRAPE_TIMEOUT
 # DATABASE_URL is used by database.py, SessionLocal will pick it up via config
 
 # Assuming database.py is in the same directory or accessible in PYTHONPATH
@@ -338,7 +338,7 @@ async def scrape_autotrader_and_update_db(db: Session, autotrader_url: str, head
 async def main():
     # Use settings from config.py
     # url = os.getenv("AUTOTRADER_URL", "https://www.autotrader.com/cars-for-sale/private-seller")
-    # headless_str = os.getenv("HEADLESS_BROWSER", "True")
+    # headless_str = os.getenv("HEADLESS", "True")
     # headless = headless_str.lower() == "true"
     # scrape_timeout_str = os.getenv("SCRAPE_TIMEOUT", "120000")
     # try:
@@ -350,11 +350,11 @@ async def main():
     # from database import SessionLocal # Already imported at the top
     db: Session = SessionLocal() # SessionLocal now uses DATABASE_URL from config.py via database.py
     try:
-        logging.info(f"Starting scraper and DB update for URL: {AUTOTRADER_URL}, Headless: {HEADLESS_BROWSER}, Timeout: {SCRAPE_TIMEOUT}ms")
+        logging.info(f"Starting scraper and DB update for URL: {AUTOTRADER_URL}, Headless: {HEADLESS}, Timeout: {SCRAPE_TIMEOUT}ms")
         stats = await scrape_autotrader_and_update_db(
             db=db,
             autotrader_url=AUTOTRADER_URL,
-            headless=HEADLESS_BROWSER,
+            headless=HEADLESS,
             scrape_timeout=SCRAPE_TIMEOUT
         )
         logging.info(f"Scraping and DB update completed: {stats}")
@@ -367,7 +367,7 @@ async def main():
 if __name__ == "__main__":
     # To run this:
     # 1. Ensure Playwright browsers are installed: `playwright install chromium`
-    # 2. Set environment variables if needed (AUTOTRADER_URL, HEADLESS_BROWSER, SCRAPE_TIMEOUT)
+    # 2. Set environment variables if needed (AUTOTRADER_URL, HEADLESS, SCRAPE_TIMEOUT)
     # 3. Uncomment the line below
     asyncio.run(main())
     # pass # Keep it passive for now, to be run manually when needed
